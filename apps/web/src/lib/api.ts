@@ -200,7 +200,7 @@ export const fetchConversations = (projectPath: string) =>
 
 export const createConversation = (
   projectPath: string,
-  agentId: 'codex' | 'claude-code' = 'codex',
+  agentId: 'codex' | 'claude-code' | 'opencode' = 'codex',
   title?: string,
 ) =>
   jsonFetch<{ conversation: Conversation }>('/api/conversations', {

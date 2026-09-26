@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { AgentEvent, AgentId, AgentInfo, AgentModel, ReasoningEffort } from '@ogf/contracts';
 import { spawnCodex, createJsonlParser } from './codex.js';
 import { spawnClaudeCode, createClaudeJsonlParser } from './claude-code.js';
+import { spawnOpenCode, createOpenCodeJsonlParser } from './opencode.js';
 
 export interface AgentDef {
   id: AgentId;
@@ -48,7 +49,32 @@ export const AGENT_DEFS: AgentDef[] = [
       { id: 'claude-haiku-4-5', label: 'Haiku 4.5 · cheap & fast' },
     ],
   },
+  {
+    id: 'opencode',
+    name: 'OpenCode',
+    bin: 'opencode',
+    versionArgs: ['--version'],
+    // OpenCode accepts any `provider/model#variant` string its config
+    // knows — OGF passes the chosen id straight to `opencode run -m <id>`.
+    // "default" omits -m so the CLI's own configured model applies.
+    // Extra choices come from OGF_OPENCODE_MODELS, comma-separated
+    // "provider/model|Label" pairs (e.g. in a git-ignored .env.local), so
+    // a personal provider setup never lives in the code.
+    fallbackModels: [{ id: 'default', label: 'Default · CLI default' }, ...opencodeModelsFromEnv()],
+  },
 ];
+
+function opencodeModelsFromEnv(): { id: string; label: string }[] {
+  return (process.env.OGF_OPENCODE_MODELS ?? '')
+    .split(',')
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const [id, label] = pair.split('|').map((x) => x.trim());
+      return { id, label: label || id };
+    })
+    .filter((m) => m.id);
+}
 
 // ── Dispatch ──
 // Maps each agent id to its spawn + parser pair so the rest of the daemon
@@ -99,6 +125,20 @@ const ADAPTERS: Record<AgentId, AgentAdapter> = {
         env: opts.env,
       }),
     makeParser: (cb) => createClaudeJsonlParser(cb),
+  },
+  opencode: {
+    // OpenCode has no Codex-style reasoning knob on `run` — ignored at
+    // spawn. Resume uses `--session <sessionID>`.
+    spawn: (opts) =>
+      spawnOpenCode({
+        bin: opts.bin,
+        cwd: opts.cwd,
+        prompt: opts.prompt,
+        model: opts.model,
+        resumeThreadId: opts.resumeThreadId,
+        env: opts.env,
+      }),
+    makeParser: (cb) => createOpenCodeJsonlParser(cb),
   },
 };
 
@@ -189,5 +229,5 @@ export function getAgentDef(id: string): AgentDef | undefined {
 }
 
 export function isAgentId(id: string): id is AgentId {
-  return id === 'codex' || id === 'claude-code';
+  return id === 'codex' || id === 'claude-code' || id === 'opencode';
 }

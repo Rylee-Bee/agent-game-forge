@@ -100,7 +100,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [preferredAgent, setPreferredAgent] = useState<AgentId>(() => {
     const v = localStorage.getItem(LS_PREFERRED_AGENT);
-    return v === 'claude-code' ? 'claude-code' : 'codex';
+    return v === 'claude-code' || v === 'opencode' ? v : 'codex';
   });
 
   useEffect(() => {
@@ -222,11 +222,11 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             </p>
           </section>
           <div style={{ display: 'grid', gap: 8 }}>
-            {(['codex', 'claude-code'] as const).map((id) => {
+            {(['codex', 'claude-code', 'opencode'] as const).map((id) => {
               const info = agents?.find((a) => a.id === id);
               const isPreferred = preferredAgent === id;
               const available = info?.available ?? false;
-              const cliName = id === 'codex' ? 'Codex CLI' : 'Claude Code';
+              const cliName = id === 'codex' ? 'Codex CLI' : id === 'claude-code' ? 'Claude Code' : 'OpenCode';
               return (
                 <label
                   key={id}
@@ -280,8 +280,17 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
                       className="muted"
                       style={{ margin: 0, marginLeft: 26, fontSize: 11, lineHeight: 1.4 }}
                     >
-                      Install with <code>npm i -g {id === 'codex' ? '@openai/codex' : '@anthropic-ai/claude-code'}</code>{' '}
-                      and reload OGF.
+                      {id === 'opencode' ? (
+                        <>
+                          Install from <code>https://opencode.ai</code> and reload OGF.
+                        </>
+                      ) : (
+                        <>
+                          Install with{' '}
+                          <code>npm i -g {id === 'codex' ? '@openai/codex' : '@anthropic-ai/claude-code'}</code>{' '}
+                          and reload OGF.
+                        </>
+                      )}
                     </p>
                   )}
                 </label>

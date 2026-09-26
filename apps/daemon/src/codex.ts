@@ -54,7 +54,14 @@ export function buildCodexArgs(
   const tail = [
     '--json',
     '--skip-git-repo-check',
-    '--full-auto',
+    // was '--full-auto' (removed in codex-cli >= 0.15x). '--approve-for-me' is
+    // its equivalent on base `exec`, but `exec resume` rejects that flag — and
+    // both forms accept `-c`, so drive unattended behavior via config keys:
+    // workspace-write sandbox, no approval prompts, network allowed.
+    '-c',
+    'approval_policy="never"',
+    '-c',
+    'sandbox_mode="workspace-write"',
     '-c',
     'sandbox_workspace_write.network_access=true',
   ];

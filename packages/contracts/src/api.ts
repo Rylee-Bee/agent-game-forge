@@ -1,4 +1,4 @@
-export type AgentId = 'codex' | 'claude-code';
+export type AgentId = 'codex' | 'claude-code' | 'opencode';
 export type EngineKind = 'godot' | 'unity' | 'web' | 'unknown';
 
 export interface AgentInfo {
