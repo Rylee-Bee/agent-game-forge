@@ -32,32 +32,15 @@
  */
 
 import { spawn, type ChildProcess } from 'node:child_process';
-import { appendFileSync, mkdirSync, statSync, truncateSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import type { AgentEvent } from '@ogf/contracts';
+import { makeDebugLogger } from './debug-log.js';
 
-const DEBUG_STREAM_LOG = path.join(homedir(), '.ogf', 'claude-code-debug.jsonl');
-const DEBUG_STREAM_MAX = 5 * 1024 * 1024;
-let debugLogChecked = false;
-
-function debugLogLine(line: string) {
-  try {
-    if (!debugLogChecked) {
-      debugLogChecked = true;
-      mkdirSync(path.dirname(DEBUG_STREAM_LOG), { recursive: true });
-      try {
-        const st = statSync(DEBUG_STREAM_LOG);
-        if (st.size > DEBUG_STREAM_MAX) truncateSync(DEBUG_STREAM_LOG, 0);
-      } catch {
-        /* fresh file */
-      }
-    }
-    appendFileSync(DEBUG_STREAM_LOG, line + '\n', 'utf8');
-  } catch {
-    /* never let logging crash the parser */
-  }
-}
+/** Opt-in raw-stream logging. Off unless OGF_CLAUDE_DEBUG_LOG names a
+ *  path (audit E16). Bounded + redacted; see debug-log.ts. */
+const debugLogLine = makeDebugLogger('OGF_CLAUDE_DEBUG_LOG');
 
 // -------------------- Spawn --------------------
 
@@ -202,17 +185,29 @@ function writeOgfSystemPromptFile(): string {
   return filePath;
 }
 
+export const DEFAULT_CLAUDE_PERMISSION_MODE = 'acceptEdits';
+
+/** Permission mode is an explicit, configurable product setting (audit
+ *  E16). Upstream hardcoded `bypassPermissions`; now the default is
+ *  `acceptEdits`, and fully-unattended elevated authority is opt-in via
+ *  OGF_CLAUDE_PERMISSION_MODE (e.g. `bypassPermissions` in .env.local). */
+export function resolveClaudePermissionMode(): string {
+  const v = process.env.OGF_CLAUDE_PERMISSION_MODE?.trim();
+  return v && v.length > 0 ? v : DEFAULT_CLAUDE_PERMISSION_MODE;
+}
+
 export function buildClaudeCodeArgs(
   model?: string,
   resumeThreadId?: string,
+  permissionMode: string = resolveClaudePermissionMode(),
 ): string[] {
   // -p / --print: non-interactive mode
   // --output-format stream-json: emit JSONL events on stdout
   // --verbose: include full turn-by-turn output (required for stream-json)
   // --include-partial-messages: emit raw streaming deltas (text_delta etc.)
-  // --permission-mode bypassPermissions: don't block on tool prompts —
-  //   OGF runs in trusted local mode like Codex's --full-auto. Users
-  //   can change this later via a settings knob.
+  // --permission-mode <permissionMode>: configurable, default acceptEdits.
+  //   `bypassPermissions` (elevated tool authority) must be opted into
+  //   explicitly rather than being hardcoded (audit E16).
   // --tools: see OGF_ALLOWED_TOOLS above for the curated list. This
   //   controls REGISTRATION — the model literally doesn't see other
   //   tools, so it can't even try them. (The unrelated --allowed-tools
@@ -227,7 +222,7 @@ export function buildClaudeCodeArgs(
     '--verbose',
     '--include-partial-messages',
     '--permission-mode',
-    'bypassPermissions',
+    permissionMode,
     '--tools',
     OGF_ALLOWED_TOOLS.join(','),
     // Drop user's globally-configured MCP servers (Gmail, Drive, Figma,

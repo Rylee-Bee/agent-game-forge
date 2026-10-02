@@ -50,6 +50,14 @@ import { readFileSync } from 'node:fs';
 import { analyzeProject } from './analyze.js';
 import { findUsages } from './usages.js';
 import { discoverEntities, discoverScenes } from './entities.js';
+import {
+  authorityGuard,
+  hostAndOriginGuard,
+  projectScopeGuard,
+  resolveSecurityOptions,
+  type ResolvedSecurity,
+  type SecurityOptions,
+} from './security.js';
 import { findSessionsForCwd, replaySession } from './codex-sessions.js';
 import { applyOps as applySceneOps, loadScene } from './scenes.js';
 import { detectGodot, GodotRunManager } from './godot.js';
@@ -110,10 +118,41 @@ import type {
   UpdateCommentThreadResponse,
 } from '@ogf/contracts';
 
-export function createServer() {
+export function createServer(
+  security: SecurityOptions | ResolvedSecurity = {},
+) {
   const app = express();
-  app.use(cors());
+  const sec: ResolvedSecurity =
+    security && (security as ResolvedSecurity).allowedHosts instanceof Set
+      ? (security as ResolvedSecurity)
+      : resolveSecurityOptions(security as SecurityOptions);
+  app.disable('x-powered-by');
+
+  // -------------------- Security boundary (audit E04) --------------------
+  // Order matters:
+  //   1. Host/Origin guard — reject DNS-rebinding / cross-origin requests
+  //      before any route (or body parser) runs; deliver the capability cookie.
+  //   2. CORS — restricted to approved origins instead of `*`.
+  //   3. Body parser.
+  //   4. Capability-token guard on authority-bearing mutations.
+  //   5. Project-root scope guard.
+  app.use(hostAndOriginGuard(sec));
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        if (!origin) return cb(null, true);
+        const norm = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+        cb(
+          null,
+          sec.allowedOrigins.some((o) => o.toLowerCase() === norm.toLowerCase()),
+        );
+      },
+      credentials: true,
+    }),
+  );
   app.use(express.json({ limit: '5mb' }));
+  app.use(authorityGuard(sec));
+  app.use(projectScopeGuard(sec));
 
   const runs = new RunManager();
   const godotRuns = new GodotRunManager();

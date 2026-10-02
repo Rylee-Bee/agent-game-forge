@@ -1,33 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { appendFileSync, statSync, truncateSync, mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
-import path from 'node:path';
 import type { AgentEvent, ReasoningEffort } from '@ogf/contracts';
+import { makeDebugLogger } from './debug-log.js';
 
-/** Where we tee every line Codex writes to stdout, for debugging
- *  unrecognized events (e.g. image_gen mappings that don't match).
- *  Truncated when it grows past 5 MB to bound disk usage. */
-const DEBUG_STREAM_LOG = path.join(homedir(), '.codex', 'ogf-stream-debug.jsonl');
-const DEBUG_STREAM_MAX = 5 * 1024 * 1024;
-let debugLogChecked = false;
-
-function debugLogLine(line: string) {
-  try {
-    if (!debugLogChecked) {
-      debugLogChecked = true;
-      mkdirSync(path.dirname(DEBUG_STREAM_LOG), { recursive: true });
-      try {
-        const st = statSync(DEBUG_STREAM_LOG);
-        if (st.size > DEBUG_STREAM_MAX) truncateSync(DEBUG_STREAM_LOG, 0);
-      } catch {
-        /* fresh file */
-      }
-    }
-    appendFileSync(DEBUG_STREAM_LOG, line + '\n', 'utf8');
-  } catch {
-    /* never let logging crash the parser */
-  }
-}
+/** Opt-in raw-stream logging. Off unless OGF_CODEX_DEBUG_LOG names a path
+ *  (audit E16). Bounded + redacted; see debug-log.ts. */
+const debugLogLine = makeDebugLogger('OGF_CODEX_DEBUG_LOG');
 
 export interface CodexRunOptions {
   bin: string;
