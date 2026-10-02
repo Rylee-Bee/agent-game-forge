@@ -102,6 +102,30 @@ test('E04: health is open and delivers the capability cookie', async () => {
   }
 });
 
+test('E04: the capability cookie authorizes authority routes (UI path)', async () => {
+  const root = tmpRoot('cookieauth');
+  const srv = await startServer([root]);
+  try {
+    const health = await request(srv.port, 'GET', '/api/health', {
+      headers: { origin: 'http://localhost:7620' },
+    });
+    const cookies = (health.headers['set-cookie'] as string[] | undefined) ?? [];
+    const cookie = cookies.find((c) => c.startsWith('ogf_token='));
+    assert.ok(cookie, 'expected capability cookie');
+    const cookieValue = cookie.split(';')[0];
+
+    const res = await request(srv.port, 'POST', '/api/files/content', {
+      headers: { cookie: cookieValue, origin: 'http://localhost:7620' },
+      body: { projectPath: root, relPath: 'via-cookie.txt', content: 'ok' },
+    });
+    assert.equal(res.status, 200);
+    assert.ok(existsSync(path.join(root, 'via-cookie.txt')));
+  } finally {
+    await srv.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('E04: authority route rejects a missing token', async () => {
   const root = tmpRoot('notoken');
   const srv = await startServer([root]);
