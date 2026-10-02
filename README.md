@@ -36,18 +36,25 @@
 
 ---
 
-Agent Game Forge (**AGF**) is an open-source desktop IDE that lets an AI coding agent build complete 2D games for you — sprites, parallax backgrounds, physics, hazards, pickups, scene layouts — and gives you a visual editor to drag-tweak whatever the agent got wrong. **You pick the agent** (Codex CLI or Claude Code) and **you pick the image gen** — bring your own API key, or use Codex CLI's built-in image gen (GPT-Image2). Today the default output is vanilla JS + Canvas (zero framework lock-in, runs in any browser); Godot 4 and Unity engine targets are on the roadmap.
+Agent Game Forge (**AGF**) is an open-source desktop IDE that lets an AI coding agent build a 2D game alongside you — sprites, parallax backgrounds, physics, hazards, pickups, scene layouts — and gives you a visual editor to drag-tweak whatever the agent got wrong. **You pick the agent** (Codex CLI or Claude Code) and **you pick the image gen** — bring your own API key, or use Codex CLI's built-in image gen (GPT-Image2). Today the default output is vanilla JS + Canvas (no framework dependency in the generated game, so it runs in a browser); Godot 4 and Unity engine targets are on the roadmap.
+
+> **This is Rylee's fork** of [`0x0funky/agent-game-forge`](https://github.com/0x0funky/agent-game-forge)
+> (upstream), on branch `rylee/local-patches`. Upstream code and its **Apache-2.0** license are
+> unchanged, and the clone/star/issue links in this README still point **upstream**. What this
+> fork adds: Codex CLI ≥ 0.15 compatibility, an OpenCode adapter, and npm ≥ 11 install-script
+> handling (see this fork's commit history and `HANDOFF.md`). For the upstream project, use the
+> upstream repo.
 
 ---
 
 ## ✨ At a glance
 
-- 🤖 **Bring your own agent** — Codex CLI or Claude Code. Switch in Settings. Live.
-- 🎨 **Production-grade asset pipeline** — sprite-sheet chroma-key, multi-action animation, parallax 4-layer tileable + despill — all first-class, not bolted on.
+- 🤖 **Bring your own agent** — Codex CLI or Claude Code, picked in Settings; the change applies to the next run.
+- 🎨 **Asset pipeline** — sprite-sheet chroma-key, multi-action animation, parallax 4-layer tileable + despill — first-class, not bolted on.
 - 🖼️ **Bring your own image gen** — supply an API key for your preferred image provider, or use Codex CLI's built-in image gen (GPT-Image2). Keys stay on your machine.
 - 🧱 **Visual scene editor** — drag platforms, hazards, pickups, colliders; hitbox overlay; live reload to the Play tab.
-- 📦 **Multi-engine on the roadmap** — Web (vanilla JS + Canvas) ships today with zero framework lock-in (push to GitHub Pages, it runs). Godot 4 and Unity targets planned.
-- 💻 **Local-first, open source** — daemon + web UI on `localhost`; your project files stay on your disk; MIT-style intent.
+- 📦 **Multi-engine on the roadmap** — Web (vanilla JS + Canvas) ships today, with no framework dependency in the generated game (push to GitHub Pages, it runs). Godot 4 and Unity targets planned.
+- 💻 **Local-first, open source** — daemon + web UI on `localhost`; your project files stay on your disk; **Apache-2.0** (see [`LICENSE`](LICENSE)).
 - 💰 **Cost-transparent** — Settings panel shows today's image-gen call count and estimated $ spend per provider.
 
 ---
@@ -82,8 +89,16 @@ Agent Game Forge (**AGF**) is an open-source desktop IDE that lets an AI coding 
 - [Claude Code](https://github.com/anthropics/claude-code) — `npm i -g @anthropic-ai/claude-code`
 
 ```bash
+# Upstream:
 git clone https://github.com/0x0funky/agent-game-forge.git
 cd agent-game-forge
+npm install
+npm run dev
+
+# This fork (Rylee-Bee), on branch rylee/local-patches:
+git clone https://github.com/Rylee-Bee/agent-game-forge.git
+cd agent-game-forge
+git checkout rylee/local-patches
 npm install
 npm run dev
 ```
@@ -200,7 +215,7 @@ Useful commands:
 
 | Engine | Status | Notes |
 |---|---|---|
-| **Web** (vanilla JS + Canvas) | ✅ default | Actively developed. Zero framework dependency; push to GitHub Pages and it runs. |
+| **Web** (vanilla JS + Canvas) | ✅ default | Actively developed. The generated game has no framework dependency; push to GitHub Pages and it runs. |
 | **Godot 4** | 🟡 legacy + roadmap | Existing Godot projects still load + edit. First-class re-investment on the post-launch roadmap. |
 | **Unity** | 🚧 planned | Targeted for after Godot first-class lands. |
 
@@ -218,7 +233,7 @@ Useful commands:
 
 ## 🤝 Contributing
 
-We're pre-launch. The codebase is small enough that PRs are welcome, but please file an issue first to discuss scope. Best ways to help right now:
+We're pre-launch. The codebase is small enough that PRs are welcome, but please file an issue first to discuss scope. Contributions here go to **upstream** ([`0x0funky/agent-game-forge`](https://github.com/0x0funky/agent-game-forge)); this fork carries only the local-patches delta described above. Best ways to help right now:
 
 - **Try it and report bugs** — file an issue with the daemon log (`~/.ogf/claude-code-debug.jsonl` or your shell terminal where `npm run dev` runs)
 - **Build a game** and show us — happy to feature it in the README
