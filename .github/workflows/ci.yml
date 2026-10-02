@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - 'rylee/**'
+  pull_request:
+    branches:
+      - rylee/local-patches
+
+jobs:
+  daemon-tests:
+    name: Daemon typecheck + tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # npm >= 11 blocks dependency install scripts; package.json's
+      # allowScripts covers better-sqlite3 + esbuild. Rebuild to make sure the
+      # native better-sqlite3 binary matches the runner's Node ABI (the
+      # "after any Node upgrade" trap in HANDOFF.md).
+      - name: Rebuild native dependencies
+        run: npm rebuild better-sqlite3 esbuild
+
+      # packages/contracts/dist is gitignored, so a clean checkout has no
+      # declarations and the daemon typecheck cannot resolve @ogf/contracts
+      # (TS2307). Build the repo's own contracts workspace first.
+      - name: Build @ogf/contracts
+        run: npm run build:contracts
+
+      - name: Type-check daemon
+        run: npx tsc -p apps/daemon/tsconfig.json --noEmit
+
+      - name: Run daemon security + agent-safety tests
+        run: npx tsx --test apps/daemon/test/security.test.ts apps/daemon/test/agent-safety.test.ts
